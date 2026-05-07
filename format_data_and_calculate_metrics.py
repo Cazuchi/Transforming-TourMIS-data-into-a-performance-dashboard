@@ -1,3 +1,7 @@
+"""
+This module contains the function definitions used to clean and format data. Tourism data is notoriously messy and incomplete, so a lot of cleanup and formatting steps are required.
+"""
+
 import pandas as pd
 import numpy as np
 from geopy.geocoders import Nominatim

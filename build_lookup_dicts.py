@@ -1,3 +1,10 @@
+"""
+This module contains the function definitions used to build supporting dictionary for the following usecases:
+* Converting city and market names from shorthand to full city names.
+* Grabbing previously identified coordinates for city destinations, to avoid calling the coordinates API unnecessarily.
+* Grabbing populations definitions for city destinations included in the dataset.
+"""
+
 import requests as rq
 import xml.etree.ElementTree as ET
 import pandas as pd
@@ -5,6 +12,7 @@ from io import BytesIO
 import os
 from google.cloud import bigquery
 import pyarrow
+import sys
 
 def build_city_dict(token: str) -> dict:
     '''
@@ -22,10 +30,11 @@ def build_city_dict(token: str) -> dict:
     for _, elem in context:
         try:
             city_dict.update({elem.find('code').text : elem.find('label').text})
-        except:
-            pass
+        except AttributeError as e:
+            print(f'Caught the following AttributeError: {e}. The city_dict is needed further down in the pipeline. Terminating script - check API response.')
+            sys.exit(1)
 
-    to_remove = [
+    to_remove = [ #Remove countries from the dataset. Only city destinations are relevant.
         'AD', 'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'GE', 'DE', 'GR', 
         'HU', 'IS', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'ME', 'NL', 'NO', 'PL', 'PT', 'RO', 
         'RU', 'SM', 'RS', 'SK', 'SI', 'ES', 'SE', 'CH', 'TR', 'UA', 'UK',
@@ -102,7 +111,8 @@ def get_population_definitions(city_dict: dict) -> dict:
         df_pop = results.to_dataframe()
         
     except Exception as e:
-        print(f"Error executing query: {e}")
+        print(f"Error executing query: {e}. These definitions are required later in the pipeline. Terminating script - look into potential issues with BigQuery table.")
+        sys.exit(1)    
 
     def convert_to_population_definitions(row):
         #Definitions are defined in a way where destinations report data for either the city area or the city AND sorrounding neighbourhoods area.

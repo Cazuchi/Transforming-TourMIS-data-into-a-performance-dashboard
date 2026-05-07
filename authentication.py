@@ -1,3 +1,7 @@
+"""
+This module contains the function definitions used to retrieve log-in information and authentication tokens.
+"""
+
 import requests as rq
 import json
 

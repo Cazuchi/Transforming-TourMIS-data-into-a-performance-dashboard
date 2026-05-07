@@ -1,3 +1,7 @@
+"""
+This module contains the function definitions used to pull the two datasets for the dashboard: One for bednights / arrivals and one for population figures.
+"""
+
 import requests as rq
 import xml.etree.ElementTree as ET
 import pandas as pd

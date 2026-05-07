@@ -1,0 +1,51 @@
+{
+  "name": "Portfolio Theme",
+  "dataColors": [
+    "#355070",
+    "#6D597A",
+    "#B56576",
+    "#E56B6F",
+    "#EAAC8B"
+  ],
+  "background": "#FDF0D5",
+  "foreground": "#355070",
+  "tableAccent": "#6D597A",
+  "textClasses": {
+    "title": {
+      "color": "#355070",
+      "fontFace": "Segoe UI",
+      "fontSize": 16,
+      "fontWeight": "bold"
+    },
+    "header": {
+      "color": "#355070",
+      "fontFace": "Segoe UI",
+      "fontSize": 12,
+      "fontWeight": "bold"
+    },
+    "label": {
+      "color": "#4A4A4A",
+      "fontFace": "Segoe UI",
+      "fontSize": 10
+    },
+    "callout": {
+      "color": "#355070",
+      "fontFace": "Segoe UI",
+      "fontSize": 28,
+      "fontWeight": "bold"
+    }
+  },
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [{ "color": { "solid": { "color": "#FDF0D5" } } }]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [{ "color": { "solid": { "color": "#FDF0D5" } }, "transparency": 0 }],
+        "outspace": [{ "color": { "solid": { "color": "#FDF0D5" } } }]
+      }
+    }
+  }
+}
