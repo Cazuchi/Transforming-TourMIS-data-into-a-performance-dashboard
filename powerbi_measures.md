@@ -241,7 +241,7 @@ VAR PopulationDensity = IF(
     BedNightsThreshold = 0,
     DIVIDE(bedNights, populationNumber),
     IF(
-        FullYearBedNights < BedNightsThreshold,
+        FullYearBedNights > BedNightsThreshold,
         DIVIDE(bedNights, populationNumber),
         BLANK()
     )
