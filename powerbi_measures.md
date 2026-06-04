@@ -2,6 +2,8 @@
 
 ### Measure #1: `Total bed nights monthly`
 This is the primary measure in the dashboard, that quite a few of the other measures reference in one way or another. It correctly calculates the bed nights for each travel destination within a pretty complex filter-context created by slicers on the pages of the dashboard as well as a few included parameters in the data itself, like the month = 13 and month = 99 parameters, but those will be explained in comments inside the measure below.  
+
+Because this measure is intended to be useable for showing both total bed nights across all destinations and bed nights for individual destinations, the "loop" to evaluate the context for each destination is required. As opposed to if this was meant for use solely in visualizations that only show the result on a per destination basis.
 ```sql
 Total bed nights monthly = 
 
@@ -112,20 +114,185 @@ RETURN
     )
 ```
 
-### Measure #2: [NAME]
-[DESCRIPTION goes here]
+### Measure #2: `Median percentage growth`
+A modified version of measure #1. Calculates the median growth rate amongst all destinations with valid data and returns it for use in a dynamic label. This can technically also be used to return the individual growth rates for each destination, but the measure is way overkill for that usecase. The graph in the dashboard that shows growth rates per city uses a simple measure that calculates the growth rate per city by dividing the measure for bed nights in the main selected timeperiod and the measure for bed nights in the comparison timeperiod.
+
+Because this measure is intended to be useable for showing the median growth across all destinations, the "loop" to evaluate the context for each destination is required. As opposed to if this was meant for use solely in visualizations that only show the result on a per destination basis.
 ```sql
-Measure code goes here.
+Median percentage growth = 
+
+VAR SelectedStartMonth = 
+    CALCULATE(
+        MIN('0.1 Calendar'[MonthNo]),
+        FILTER('0.1 Calendar',
+            '0.1 Calendar'[Month] = SELECTEDVALUE('0.3 Start_month_table'[Month])
+        )
+    )
+
+VAR SelectedEndMonth = 
+    CALCULATE(
+        MIN('0.1 Calendar'[MonthNo]),
+        FILTER('0.1 Calendar',
+            '0.1 Calendar'[Month] = SELECTEDVALUE('0.4 End_month_table'[Month])
+        )
+    )
+
+VAR SelectedYear = MIN('0.1 Calendar'[Year])
+
+VAR chosenDefinition = SELECTEDVALUE('Monthly_data'[Definition_expanded])
+
+VAR return_value =
+    MEDIANX(
+        VALUES('Monthly_data'[Destination]),
+        VAR currentDestination = 'Monthly_data'[Destination]
+        VAR HasEndMonth =
+            IF(
+                SelectedEndMonth = 12,
+                OR(
+                    CALCULATE(
+                        COUNTROWS('Monthly_data'),
+                        'Monthly_data'[Month] = SelectedEndMonth,
+                        'Monthly_data'[Definition_expanded] = chosenDefinition,
+                        'Monthly_data'[Destination] = currentDestination,
+                        'Monthly_data'[Year] = SelectedYear
+                    ) > 0,
+                    CALCULATE(
+                        COUNTROWS('Monthly_data'),
+                        'Monthly_data'[Month] = 13,
+                        'Monthly_data'[Definition_expanded] = chosenDefinition,
+                        'Monthly_data'[Destination] = currentDestination,
+                        'Monthly_data'[Year] = SelectedYear
+                    ) > 0
+                ),
+                CALCULATE(
+                    COUNTROWS('Monthly_data'),
+                    'Monthly_data'[Month] = SelectedEndMonth,
+                    'Monthly_data'[Definition_expanded] = chosenDefinition,
+                    'Monthly_data'[Destination] = currentDestination,
+                    'Monthly_data'[Year] = SelectedYear
+                ) > 0
+            )
+        RETURN IF(
+            HasEndMonth, 
+            IF(
+                [Total bed nights monthly]/[Total bed nights monthly comp. year] < 50,
+                [Total bed nights monthly]/[Total bed nights monthly comp. year] - 1,
+                BLANK()
+            ),
+            BLANK())
+    )
+
+RETURN return_value
 ```
 
-### Measure #3: [NAME]
-[DESCRIPTION goes here]
+### Measure #3: `Population density`
+This measure also uses a lot of the same logic as measure #1, however this measure is only ever used in visualizations that show the result on a per destination basis, so the "loop" over each destination is not necessary.
+
+This measure finds the bed nights / arrivals in a given destination and divides it by the destinations population to get a population density measure. A proxy for the level of tourism in a destination relative to the size of the population. Higher numbers generally mean more pressure on the destination from the tourism activities there.
 ```sql
-Measure code goes here.
+Population Density = 
+
+VAR chosenDefinition = SELECTEDVALUE('Monthly_data'[Definition_expanded])
+VAR chosenDestination = SELECTEDVALUE('Monthly_data'[Destination])
+VAR chosenYear = SELECTEDVALUE('0.1 Calendar'[Year])
+VAR chosenSeason = SELECTEDVALUE('Monthly_data'[Season])
+Var chosenMarket = SELECTEDVALUE(Monthly_data[Market - Copy])
+
+VAR populationNumber = SUMX(
+    FILTER(
+        'Population_statistics',
+        'Population_statistics'[Definition] = chosenDefinition &&
+        'Population_statistics'[Destination] = chosenDestination &&
+        'Population_statistics'[Year] = chosenYear
+    ),
+    'Population_statistics'[Population]
+)
+
+VAR bedNights = CALCULATE(
+    SUM(
+        'Monthly_data'[Bed nights]),
+        FILTER(
+            'Monthly_data',
+            'Monthly_data'[Season] = chosenSeason &&
+            'Monthly_data'[Definition_expanded] = chosenDefinition
+    )
+)
+
+VAR FullYearBedNights = CALCULATE(
+    SUM('Monthly_data'[Bed nights]),
+    ALL('Monthly_data'),
+    'Monthly_data'[Definition_expanded] = chosenDefinition,
+    'Monthly_data'[Destination] = chosenDestination,
+    'Monthly_data'[Year] = chosenYear,
+    'Monthly_data'[Market - Copy] = chosenMarket,
+    'Monthly_data'[Month] <> 99
+)
+
+
+VAR SelectedBedNightsThreshold = SELECTEDVALUE('Bednights Threshold Table'[Filter Value])
+
+VAR BedNightsThreshold = LOOKUPVALUE(
+    'Bednights Threshold Table'[Sort Order],
+    'Bednights Threshold Table'[Filter Value],
+    SelectedBedNightsThreshold
+)
+
+VAR PopulationDensity = IF(
+    BedNightsThreshold = 0,
+    DIVIDE(bedNights, populationNumber),
+    IF(
+        FullYearBedNights < BedNightsThreshold,
+        DIVIDE(bedNights, populationNumber),
+        BLANK()
+    )
+)
+
+VAR selectedThreshold = SELECTEDVALUE('Population Density Threshold Table'[Filter Value]) --Slicer context. There's a slicer that allows users to filter destinations by their population density figure, because some destinations have extreme values that can make it difficult to gauge the level in other destinations in visualizations.
+VAR thresholdValue = 
+    IF(
+        selectedThreshold = "None",
+        BLANK(),
+        VALUE(SUBSTITUTE(SUBSTITUTE(selectedThreshold, ">", "")," ratio",""))
+    )
+
+RETURN
+    IF(
+        ISBLANK(thresholdValue),
+        PopulationDensity,  // No threshold selected
+        IF(PopulationDensity > thresholdValue, BLANK(), PopulationDensity)  // Zero out values above threshold
+    )
 ```
 
-### Measure #4: [NAME]
-[DESCRIPTION goes here]
+### Measure #4: `Top destinations dynamic text box`
+Just a dynamic label that changes based on the user's choices for the slicers on the page. Mostly just references existing measures and the user's selected values in the slicers on the page.
 ```sql
-Measure code goes here.
+Top destinations dynamic text box = 
+
+VAR bednights_or_arrivals = IF(SELECTEDVALUE(Monthly_data[Definition_expanded]) = "Bednights - preferred definition", "bednights", "arrivals")
+
+VAR dynamic_text = "This view shows the top 20 travel destinations based on total " &
+bednights_or_arrivals &
+" from " &
+SELECTEDVALUE('0.3 Start_month_table'[Month]) &
+" to " &
+SELECTEDVALUE('0.4 End_month_table'[Month]) &
+" " &
+MIN('0.1 Calendar'[Year]) &
+", as well as the top 20 travel destinations based on percentage growth of " &
+bednights_or_arrivals &
+" compared to " & 
+MIN('0.2 Comparison calendar'[Year]) &
+" in the same months." &
+UNICHAR(10) &
+UNICHAR(10) &
+"For context, a total of " &
+[City counter] &
+" travel destinations have valid data for this filter context, with a median percentage growth of " &
+FORMAT([Median percentage growth], "0.0%") &
+"." &
+UNICHAR(10) &
+UNICHAR(10) &
+"Other filters may have been applied. Open the filters menu to see the full filter context for the displayed data."
+
+RETURN dynamic_text
 ```
