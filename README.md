@@ -1,8 +1,5 @@
 # Transforming tourism data to an interactive dashboard
 
-### Data source
-This project pulls bed nights and arrivals data from an Austrian University databash with aggregated data from multiple national statistics bureaus databases. So the data itself is publicly available, but I have permission to use this aggregated dataset in this project, which requires you to request a TourMIS account, if you would like to use the same data.
-
 ### Project goal
 Since my professional project are mostly confidential and my master's degree doesn't explicitly highlight my python, cloud pipeline and DAX / PowerBi skills, I wanted to create this project to show that I can create a full data pipeline from A-Z. This project does the following:
 
@@ -27,3 +24,6 @@ https://app.powerbi.com/view?r=eyJrIjoiOGM4Yjk3NGUtMmVlNS00NTEyLTk3MjUtNWNiNDQ4Z
 * Python
 * DAX / PowerBi
 * Google Compute Engine / Secret Manager / IAM / BigQuery
+
+### Data source
+This project pulls bed nights and arrivals data from an Austrian University databash with aggregated data from multiple national statistics bureaus databases. So the data itself is publicly available, but I have permission to use this aggregated dataset in this project, which requires you to request a TourMIS account, if you would like to use the same data.
